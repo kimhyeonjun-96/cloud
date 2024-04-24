@@ -22,14 +22,12 @@
 
 <br>
 
-## :bulb: Cloud [link]()
+## :bulb: Cloud [link](https://github.com/kimhyeonjun-96/cloud/blob/main/Cloud.md)
 + 인프라란?
 + 클라우드란?
-+ 클라우드 컴퓨팅의 종류
++ 클라우드 컴퓨팅의 형태
 + 클라우드 컴퓨팅의 특징
-+ 클라우드의 장단점
 + 클라우드 사용 이유
-+ 클라우드 도입 전 고려 사항
 + 클라우드 네이티브
 + 3 Tier Architecture
 

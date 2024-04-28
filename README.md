@@ -35,9 +35,7 @@
 
 ## :bulb: VirtualMachine [link]()
 + VM과 가상화
-+ 가상화 기술
 + 가상화 유형
-+ VM 사용 이유
 + KVM
 + Vagrant
 + KVM과 Vagrant를 통한 VM 구축

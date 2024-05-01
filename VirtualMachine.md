@@ -124,3 +124,177 @@ VM은 하이퍼바이저라 불리는 소프트웨어로 가상머신 생성하�
 -----------------------
 
 <br>
+
+### KVM
+
+<details>
+    <summary>🤔 내용 보기 </summary>
+<br/>
+
+-----------------------
+
+1. KVM이란?? 
+    
+    KVM이란 리눅스의 커널 기반 가상머신을 만들어주는 하이퍼바이저이다. 
+    KVM을 사용하면 호스트 머신에서 VM같이 격리된 가상 환경 여러개를 실행할 수 있다. 
+
+2. KVM 작동원리
+
+    KVM을 사용하면 1유형인 베어메탈 하이퍼바이저로 변환이 된다.
+
+    하이퍼바이저는 VM을 실행하려면 운영체제 수준의 구성 요소가 필요하다.
+
+    a. 메모리 관리 프로그램
+    
+    b. 프로세스 스케줄러
+
+    c. I/O 스택
+
+    d. 기기 드라이버
+
+    e. 보안 관리 프로그램
+
+    f. 네트워크 스택
+
+    KVM은 리눅스 커널의 일부이기에 이러한 구성 요소를 모두 가지고 있다. 
+    
+    모든 VM은 표준 리눅스 스케줄러를 통해 일정이 예약되면 네트워크 카드, 그래픽 어댑터, 프로세서, 메모리, 디스크와 같은 전용 가상 하드웨어를 사용해 일반적인 리눅스 프로세스로 구현이 된다. 
+
+3. libvirt란?
+
+    가상화 소프트웨어에는 Quem-KVM, Xen, VMware 등이 있다. 이들을 이용해 VM을 생성하고 운용하고 삭제할 수 있다. 
+    이 때 각자의 소프트웨어에 맞는 API, CLI등을 사용해야 한다. 
+
+    따라서 여러 가상화 소프트웨어를 사용한다면 큰 불편함이 생기게된다. 
+
+    이러한 불편함을 해결해주기 만들어진 것이 libvirt이다. 
+
+    libvirt는 Quem-KVM, Xen, VMware 등이 다양한 하이퍼바이저를 작동시키기 위한 통합 API이다.
+    libvirt 하나만으로 여러 하이퍼바이저 및 그들에 의해 생성된 여러 vm을 조작할 수 있다. 
+
+    libvirt만으로 Quem-KVM이나 Vmaware 등 여러 가상화 소프트웨어를 조작할 수 있게 되었다. 
+
+    <div align="center">
+        <img src="./image/libvirt" width="100%"></img>
+    </div>
+
+    사진을 보면 libvirt를 사용함으로 파란박스에 있는 여러 가상화 소프트웨어를 다룰 수 있다. 
+
+    또 libvirt API를 사용하여 빨간박스 안에 있는 vm관리 애플리케이션들을 통하여 vm들을 관리할 수 있다. 
+
+4. KVM 구축하기
+
+    나는 RHEL8 버전을 통하여서 진행을 했는데, Cent나 Rocky에서도 아마 동일하게 동작을 할 것이다. 우분투는 아래와 같은 순서로 진행을 하면 된다. 
+
+    그리고 먼저 호스트가 가상화 지원을 하는지 먼저 확인을 해야한다. 
+
+    나는 리눅스 서버가 지원을 하는지 확인을 하였고 방법은 아래의 명령어로 확인하면 된다. 
+    ```
+    lscpu | grep Virtualization
+    ```
+
+    a. 패키지 설치
+    ```
+    yum install qemu-kvm libvirt virt-install bridge-utils virt-manager 
+    ```
+
+    b. vm 관리 패키지 설치
+    ```
+    dnf install -y libvirt-devel virt-top libguestfs-tools virt-manager virt-install
+    ```
+
+    c. libvirtd 활성화 및 시작
+    ```
+    systemctl enable --now libvirtd
+    systemctl status libvirtd
+    ```
+
+    d. 시스템 체크
+    ```
+    virt-host-validate
+    ```
+
+    e. X11 패키지 설치
+    ```
+    dnf install xterm xorg-x11-xauth xorg-x11-fonts-* xorg-x11-utils -y
+    ```
+
+
+    f. 실행
+
+</details>
+
+-----------------------
+
+<br>
+
+### Vagrant
+
+<details>
+    <summary>🤔 내용 보기 </summary>
+<br/>
+
+-----------------------
+
+1. Vagrant란?
+
+    <div align="center">
+        <img src="./image/Vagrant.png" width="50"></img>
+    </div>
+
+    Vagrant란 여러 대의 가상 환경을 구축하고 관리할 수 있도록 도와주는 프로비저닝 도구이다. 
+    
+    그래서 개발자들이 동일한 개발환경을 구축하고 다른 운영체제나 호스트에서 동일한 개발 환경을 실행할 수 있게 해준다. 
+
+    Vagrant는 IaC이다. 추가적으로 아주 정밀하지는 않지만 자동화도 지원한다. 
+
+    ruby로 개발이 되었으며, 환경 구축을 위해 Vagrantfile을 작성하여 구축을 위한 설정을 한다. 이 파일은 git 같이 버전관리 시스템에 저장하여 다른 사람들과 공유할 수 있다. 
+
+    이러한 Vagrant는 VirtualBox, VMware 그리고 지금 내가 함께 사용하고 있는 KVM과 함께 사용이 가능하다. 
+
+2. Vagrantfile
+
+    [Vagrantfile 보기](./image/Vagrantfile)
+    
+    vagrantfile의 각 구성요소는 다음과 같다.
+
+    |이름|설명|
+    |:-----:|:-----|
+    |Vagrant.configure("2")|Vagrantfile의 버전을 명시한다.또한 Vagrantfile의 맨 처음에 위치해야만 한다.|
+    |do config|Vagrant 설정 정의하는 블록을 열어 config라는 변수를 통하여 vagrant 설정을 지정한다.|
+    |config.vm.box="centos/8"|가상 머신 이미지를 선택한다.|
+    |config.vm.box_check_update=false|Vagrant가 가상 머신에 할당된 Box 이미지를 업데이트 할 때 자동으로 확인하는 것을 비활성화 하는 설정이다.|
+
+</details>
+
+-----------------------
+
+<br>
+
+### KVM과 Vagrant를 통한 VM 구축
+
+<details>
+    <summary>🤔 내용 보기 </summary>
+<br/>
+
+-----------------------
+
+지금까지 VM은 무엇인지와 VM에 속하는 KVM 그리고 Vagrant에 대해서 알아보았다. 
+
+이론적으로 알고만 있으면 잘 이해가 안간다.
+
+직접 손으로 쳐보는게 제일 빠르게 이해하고 습득할 수 있다. 
+
+그래서 지금 아주 간단하게 Vagrant를 통하여 ansible vm을 생성하고 간단하게 ansible을 통하여 다른 vm으로 ping테스트를 해보도록 하겠다. 
+
+1. Vagrant 파일 작성
+
+2. Vagrant 실행
+
+3. vm 접속
+
+4. ansible 버전 확인
+
+5. 다른 vm 서버로 ping 테스트
+
+</details>

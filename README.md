@@ -15,7 +15,7 @@
 
 ## :memo: Table of Contents
 + [Cloud란](https://github.com/kimhyeonjun-96/cloud/blob/main/Cloud.md)
-+ [VirtualMachine]()
++ [VirtualMachine](https://github.com/kimhyeonjun-96/cloud/blob/main/VirtualMachine.md)
 + [OpenStack]()
 + [Container]()
 + [Kubernetes]()

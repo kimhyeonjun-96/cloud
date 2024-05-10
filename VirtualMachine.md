@@ -287,14 +287,175 @@ VM은 하이퍼바이저라 불리는 소프트웨어로 가상머신 생성하�
 
 그래서 지금 아주 간단하게 Vagrant를 통하여 ansible vm을 생성하고 간단하게 ansible을 통하여 다른 vm으로 ping테스트를 해보도록 하겠다. 
 
-1. Vagrant 파일 작성
+1. vagrant 커스텀 box 이미지 생성
 
-2. Vagrant 실행
+    나의 경우에는 환경이 qemu-kvm 환경이라서 vmware나 virtualbox보다는 조금 복잡할 수 있다. (삽질 좀 했다.)
 
-3. vm 접속
+    1. qcow2 파일 만들기
+    ```
+        qemu-img create -f qcow2 /data/vm_disk/ansible-master-centos.qcow2 20G
+    ```
 
-4. ansible 버전 확인
+    2. 만들어진 qcow2 파일로 vm 생성
+    ```
+        virt-install --name ansible-master \
+         --ram 4096  \
+         --vcpus 2 \
+         --disk /data/vm_disk/ansible-master-centos.qcow2,format=qcow2 \
+         --network bridge=br0  \ 
+         --graphics vnc,listen=0.0.0.0 \
+         --noautoconsole  \
+         --os-type=linux \
+         --os-variant=centos8  \
+         --location=/data/images/CentOS-8.4.2105-x86_64-dvd1.iso
+    ```
 
-5. 다른 vm 서버로 ping 테스트
+    3. vm 접속하여 설정
+    ```
+    # repository 변경
+    sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-Linux-*
+    sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-Linux-*
+
+    # vagrant 계정 생성 및 비밀번호 설정
+    sudo useradd vagrant
+    echo 'vagrant:vagrant' | sudo chpasswd
+
+    # should be able to run sudo commands without a password prompt
+    sudo touch /etc/sudoers.d/vagrant
+    echo 'vagrant ALL=(ALL) NOPASSWD:ALL' | sudo tee /etc/sudoers.d/vagrant > /dev/null
+
+    # get the master key
+    sudo mkdir -p /home/vagrant/.ssh
+    sudo yum install wget vim -y
+    sudo wget --no-check-certificate https://raw.github.com/mitchellh/vagrant/master/keys/vagrant.pub -O /home/vagrant/.ssh/authorized_keys
+    sudo chmod 0600 /home/vagrant/.ssh/authorized_keys
+    sudo chown -R vagrant:vagrant /home/vagrant/.ssh
+
+    # ssh 설정 변경
+    sudo sed -i 's/#PermitEmptyPasswords no/PermitEmptyPasswords yes/' /etc/ssh/sshd_config
+    sudo sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config
+    sudo sed -i 's/#PubKeyAuthentication yes/PubKeyAuthentication yes/' /etc/ssh/sshd_config
+    sudo sed -i 's/#AuthorizedKeysFile/AuthorizedKeysFile .ssh\/authorized_keys/' /etc/ssh/sshd_config
+    sudo systemctl restart sshd
+    ```    
+
+    4. 이후 해당 vm은 삭제를 한다.
+    ```    
+    virsh undefined [ vm name ]
+    ```    
+
+    5. box를 만들기 위한 디렉토리 생성 이후 metadata.json 파일 생성
+    ```    
+    vim metadata.json
+
+    {
+    "provider"     : "libvirt",
+    "format"       : "qcow2",
+    "virtual_size" : 25
+    }
+    ```    
+
+    6. vagrant init을 통하여 vagrantfile 생성 및 작성
+    ```    
+    # -*- mode: ruby -*-
+    # vi: set ft=ruby :
+
+    Vagrant.configure("2") do |config|
+    config.vm.provider :libvirt do |libvirt|
+        libvirt.driver = "kvm"
+        libvirt.uri = 'qemu:///system'
+        libvirt.host = 'localhost'
+        libvirt.qemu_use_session = false
+        libvirt.nested = true
+    end
+    end
+    ```    
+
+    7. qcow2 파일 복사 및 .img 확장자로 변경
+    ```    
+    cp /data/vm_disk/ansible-master-centos.qcow2 .
+    mv ansible-master-centos.qcow2 box.img
+    ```    
+
+    8. 아카이브 생성
+    ```    
+    tar cvzf ansible_box.box ./metadata.json ./Vagrantfile ./box.img
+    ```    
+
+    9. vagrant box에 추가
+    ```    
+    vagrant box add --name my-ansible ansible_box.box
+    ```    
+
+2. Vagrant 파일 작성
+
+    이후 프로젝트 디렉토리를 생성하고 이동 한다.
+    그리고 "vagrant init"을 통하여 vagrant를 시작한다. 
+    ```    
+    # -*- mode: ruby -*-
+    # vi: set ft=ruby :
+
+    Vagrant.configure("2") do |config| 
+    # vagrant provider 설정
+    config.vagrant.plugins = "vagrant-libvirt"
+    config.ssh.insert_key = false
+    config.vm.synced_folder ".", "/vagrant", disabled: true
+
+    config.vm.define "ansible-master" do |cfg0|
+        # setting vm
+        cfg0.vm.box = "my-ansible"
+        cfg0.vm.box_url = "/project/my_box/ansible_box/ansible_box.box"
+        cfg0.vm.host_name = "ansible-master"
+        cfg0.vm.box_check_update = false
+        
+        # setting vm spec
+        cfg0.vm.provider :libvirt do |spec|
+            spec.memory = 4096
+            spec.cpus = 2
+        end
+
+        # 브릿지 네트워크 설정
+        cfg0.vm.network "public_network", :dev => "br1", :type => "bridge"
+        cfg0.vm.network "forwarded_port", guest: 22, host: 20010, id: "ssh"
+        
+        # setting epel repo  
+        cfg0.vm.provision "shell", inline: "sudo yum install -y epel-release elrepo-release"
+
+        # install pyton
+
+        # disable fireward and selinux
+        cfg0.vm.provision "shell", inline: "sudo systemctl disable --now firewalld"
+        cfg0.vm.provision "shell", inline: "sudo sed -i 's/^SELINUX=enforcing.*$/SELINUX=disabled/' /etc/selinux/config"
+        
+
+        cfg0.vm.provision "shell", inline: "sudo reboot"
+    end
+    end
+
+    ```    
+
+3. Vagrant 실행
+
+    ```
+    vagrant up
+    ```
+
+4. vm 접속
+
+    ```
+    vagrant ssh
+    ```
+
+5. ansible 버전 확인
+
+    ```
+    ansible --version
+    ```
+
+6. 다른 vm 서버로 ping 테스트
+    <div align="left">
+        <img src="./image/ansible_ping_test.png" width="60%"></img>
+    </div>
+    
 
 </details>
